@@ -1,6 +1,7 @@
 # -*- coding: utf8 -*-
 import numpy as np
-
+import sympy
+import random
 
 # テンパズルの数式を探索するためのノード
 class PuzzleNode:
@@ -31,8 +32,12 @@ class BinaryOperation:
 BINARY_OPERATION_LIST = [
 	BinaryOperation(lambda a, b: a+b,		lambda a, b: '(%s + %s)' % (a, b,),		1),
 	BinaryOperation(lambda a, b: a-b,		lambda a, b: '(%s - %s)' % (a, b,),		1),
+	BinaryOperation(lambda a, b: b-a,		lambda a, b: '(%s - %s)' % (b, a,),		1),
 	BinaryOperation(lambda a, b: a*b,		lambda a, b: '(%s \\times %s)' % (a, b,),	1),
 	BinaryOperation(lambda a, b: int(a/b),	lambda a, b: '(\lfloor %s / %s \\rfloor)' % (a, b,),		2),
+	BinaryOperation(lambda a, b: int(b/a),	lambda a, b: '(\lfloor %s / %s \\rfloor)' % (b, a,),		2),
+	# BinaryOperation(lambda a, b: a%b,		lambda a, b: '(%s \\bmod %s)' % (a, b),	1),
+	# BinaryOperation(lambda a, b: b%a,		lambda a, b: '(%s \\bmod %s)' % (b, a),	1)
 ]
 
 # 探索用配列の初期化
@@ -73,7 +78,7 @@ def searchOnce(nodesSortedByCost, nodesWithIndexValue, min_cost, max_cost):
 	nodesSortedByCost.sort(key=lambda x: x.cost) # コストのソートは追加分だけに削減できるかも
 
 
-for i in range(1, 6):
+for i in range(1, 5):
 	searchOnce(nodesSortedByCost, nodesWithIndexValue, i, COST_LIMIT)
 
 def printNodes(nodes):
@@ -85,4 +90,9 @@ def printNodes(nodes):
 # printNodes(nodesSortedByValue)
 nodes = [node for node in list(nodesWithIndexValue) if node != 0]
 # printNodes(nodes)
-print(len(nodes))
+# print(len(nodes))
+rnd_node = random.choice(nodes)
+sympy.init_printing()
+equation = '$$ %d = %s $$' % (rnd_node.value, rnd_node.tex,)
+# sympy.preview(equation, viewer='file', filename='./sandbox/sample.png', euler=False, dvioptions=["-T", "tight", "-z", "0", "--truecolor", "-D 600", "-bg", "Transparent"])
+sympy.preview(equation, viewer='file', filename='./sandbox/sample.png', euler=False, dvioptions=["-T", "tight", "-z", "0", "--truecolor", "-D 600",])
