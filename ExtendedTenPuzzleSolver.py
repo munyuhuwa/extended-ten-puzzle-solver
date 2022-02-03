@@ -10,14 +10,17 @@ class PuzzleNode:
 		self.tex = tex # 数式のtex
 		self.cost = cost # 数式の複雑度
 
+def printNodes(nodes):
+	for node in nodes:
+		print('value: %d,\ttex: %s,\tcost: %d' % (node.value, node.tex, node.cost,))
+
 # 設定
 COST_LIMIT = 20
-VALUE_LIMIT = 1000000
-VALUE_NEG_LIMIT = -1000000
+VALUE_LIMIT = 1000
+VALUE_NEG_LIMIT = -1000
 
 # 探索用のデータ構造
-nodesSortedByCost = list()
-nodesWithIndexValue = np.zeros((VALUE_LIMIT-VALUE_NEG_LIMIT+1,), dtype=PuzzleNode)
+nodeArray = np.zeros((VALUE_LIMIT-VALUE_NEG_LIMIT+1,), dtype=PuzzleNode)
 # インデックスはVALUE_NEG_LIMITだけずらして考える
 
 # 探索は計算結果が整数であるような範囲で行う
@@ -42,56 +45,69 @@ BINARY_OPERATION_LIST = [
 
 # 探索用配列の初期化
 node = PuzzleNode(334, '334', 0)
-nodesSortedByCost.append(node)
-nodesWithIndexValue[(334-VALUE_NEG_LIMIT)] = node
+nodeArray[(334-VALUE_NEG_LIMIT)] = node
 
-def searchOnce(nodesSortedByCost, nodesWithIndexValue, min_cost, max_cost):
+def searchOnce(nodeArray, min_cost, max_cost):
 	#後から追加したノードはその場では探索しない
-	nNodes = len(nodesSortedByCost)
-	nodesSortedByCostExtra = list()
+	# arrayからnodeが存在する要素だけ抜き出す
+	nodeListSortedByCost = sorted(list(nodeArray[np.nonzero(nodeArray)]), key=lambda node: node.cost)
+	# print('---')
+	# printNodes(nodeListSortedByCost)
+	# print('/---')
+	nNodes = len(nodeListSortedByCost)
 	for i in range(nNodes):
-		nodeI = nodesSortedByCost[i]
+		nodeI = nodeListSortedByCost[i]
 		for j in range(i, nNodes):
-			nodeJ = nodesSortedByCost[j]
+			nodeJ = nodeListSortedByCost[j]
 			# 第一引数と第二引数は、同じか第二引数のほうがより後ろの組み合わせだけ探索する
 			for op in BINARY_OPERATION_LIST:
-				cost_sum = nodeI.cost + nodeJ.cost + op.cost
-				if cost_sum < min_cost:
+				# コストの計算・条件
+				newCost = nodeI.cost + nodeJ.cost + op.cost
+				if newCost < min_cost:
 					continue
-				if max_cost < cost_sum:
+				if max_cost < newCost:
 					break
+				# 値の計算・条件
 				try:
-					value = op.func_op(nodeI.value, nodeJ.value)
+					newValue = op.func_op(nodeI.value, nodeJ.value)
 				except:
 					continue
-				if value < VALUE_NEG_LIMIT:
+				if newValue < VALUE_NEG_LIMIT:
 					continue
-				if VALUE_LIMIT < value:
+				if VALUE_LIMIT < newValue:
 					continue
-				if nodesWithIndexValue[value-VALUE_NEG_LIMIT] != 0:
+				# すでに同じ値がある
+				idx = newValue-VALUE_NEG_LIMIT
+				if nodeArray[idx] != 0:
 					continue
-				tex = op.func_tex(nodeI.tex, nodeJ.tex)
-				newNode = PuzzleNode(value, tex, cost_sum)
-				nodesSortedByCostExtra.append(newNode)
-				nodesWithIndexValue[value-VALUE_NEG_LIMIT] = newNode
-	nodesSortedByCost += nodesSortedByCostExtra
-	nodesSortedByCost.sort(key=lambda x: x.cost) # コストのソートは追加分だけに削減できるかも
+				# TeXの生成
+				newTex = op.func_tex(nodeI.tex, nodeJ.tex)
+				# nodeの生成
+				newNode = PuzzleNode(newValue, newTex, newCost)
+				nodeArray[idx] = newNode
+				# printNodes([newNode,])
+	return len(nodeListSortedByCost)# 実行前の個数
 
+nNodeListAtLoop = []
+for i in range(1, 9):
+	cnt = searchOnce(nodeArray, i, COST_LIMIT)
+	print('loop %d:\tfound %d' % (i, cnt,))
+	nNodeListAtLoop.append(cnt)
+finalNodeList = list(nodeArray[np.nonzero(nodeArray)])
+nNodeListAtLoop.append(len(finalNodeList))
 
-for i in range(1, 5):
-	searchOnce(nodesSortedByCost, nodesWithIndexValue, i, COST_LIMIT)
+# 検索状況の出力
+with open('./sandbox/log.txt', 'w', encoding='utf8') as f:
+	for i in range(len(nNodeListAtLoop)):
+		f.write('%d\t%d\n' % (i, nNodeListAtLoop[i]))
+# TeXの出力
+with open('./sandbox/log_tex.txt', 'w', encoding='utf8') as f:
+	for node in finalNodeList:
+		equation = '$$ %d = %s $$\n' % (node.value, node.tex,)
+		f.write(equation)
 
-def printNodes(nodes):
-	for node in nodes:
-		print('value: %d,\ttex: %s,\tcost: %d' % (node.value, node.tex, node.cost,))
-
-# print(nodesSortedByCost)
-# print(nodesSortedByValue)
-# printNodes(nodesSortedByValue)
-nodes = [node for node in list(nodesWithIndexValue) if node != 0]
-# printNodes(nodes)
-# print(len(nodes))
-rnd_node = random.choice(nodes)
+# 画像出力サンプル
+rnd_node = random.choice(finalNodeList)
 sympy.init_printing()
 equation = '$$ %d = %s $$' % (rnd_node.value, rnd_node.tex,)
 # sympy.preview(equation, viewer='file', filename='./sandbox/sample.png', euler=False, dvioptions=["-T", "tight", "-z", "0", "--truecolor", "-D 600", "-bg", "Transparent"])
